@@ -1,0 +1,1 @@
+This is just a fun little project I am working on with my daugther, she is in charge of types of pizza, toppings and price. Heck of a deal if you ask me. Is she way to young to know what I am doing but talking to a toddler helps me learn
