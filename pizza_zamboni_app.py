@@ -28,7 +28,7 @@ class PizzaOrderApp(QMainWindow):
 
         # Add image banner
         banner_label = QLabel()
-        pixmap = QPixmap("PizzaZamboni.png")  # Replace with the correct path to your image
+        pixmap = QPixmap("PizzaZamboni.png")  
         pixmap_resized = pixmap.scaled(400, 400, Qt.AspectRatioMode.KeepAspectRatio)
         banner_label.setPixmap(pixmap_resized)
         banner_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
