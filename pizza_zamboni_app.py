@@ -1,171 +1,134 @@
-from PyQt6.QtWidgets import (
-    QApplication, QMainWindow, QVBoxLayout, QLabel, QLineEdit, QPushButton, QWidget, QMessageBox, QSpinBox, QGridLayout, QCheckBox, QScrollArea
-)
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPalette, QColor
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtGui import QIcon
-import sys
+import tkinter as tk
+from tkinter import ttk, messagebox
+import ttkbootstrap as tb
+from PIL import Image, ImageTk  
 
-class PizzaOrderApp(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Pizza Zamboni")
-        self.setMinimumSize(600, 800)
-        self.initUI()
+# Pricing dictionary
+PRICES = {'Small': 8, 'Medium': 10, 'Large': 12, 'Breadsticks': 5, 'Tater Tots': 5, 'Mac': 5}
+TOPPINGS = [
+    "Cheesy Goodness", "Bacon", "Broccoli", "Peppers",
+    "Onion", "Mushrooms", "Black Olives", "Sausage", "Pepperoni"
+]
+SIDES = ["Breadsticks", "Tater Tots", "Mac"]
 
-    def initUI(self):
-        # Set window icon (favicon)
-        self.setWindowIcon(QIcon("PizzaZamboni.png"))
+class PizzaZamboniApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Pizza Zamboni Menu")
+        self.root.geometry("800x500")  
+        self.root.configure(bg='#1e1e1e')
 
-        # Main container widget
-        container = QWidget()
-        self.setCentralWidget(container)
+        self.orders = []
+        self.current_order = {"name": "", "size": None, "toppings": [], "side": None}
 
-        # Main layout
-        layout = QVBoxLayout()
-        container.setLayout(layout)
-
-        # Add image banner
-        banner_label = QLabel()
-        pixmap = QPixmap("PizzaZamboni.png")  
-        pixmap_resized = pixmap.scaled(400, 400, Qt.AspectRatioMode.KeepAspectRatio)
-        banner_label.setPixmap(pixmap_resized)
-        banner_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(banner_label)
-
-        # User name input
-        layout.addWidget(QLabel("Enter your name:"))
-        self.name_input = QLineEdit()
-        layout.addWidget(self.name_input)
-
-        # Scroll area for pizzas
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_widget = QWidget()
-        self.pizza_layout = QVBoxLayout()
-        scroll_widget.setLayout(self.pizza_layout)
-        scroll_area.setWidget(scroll_widget)
-        layout.addWidget(scroll_area)
-
-        self.pizza_options = []  # To hold pizza configurations
-
-        self.add_pizza_row()
-
-        # Add pizza button
-        self.add_pizza_button = QPushButton("Add Another Pizza")
-        self.add_pizza_button.clicked.connect(self.add_pizza_row)
-        layout.addWidget(self.add_pizza_button)
-
-        # Submit button
-        self.submit_button = QPushButton("Place Order")
-        self.submit_button.clicked.connect(self.calculate_cost)
-        layout.addWidget(self.submit_button)
-
-        # Apply dark theme
-        self.apply_dark_theme()
-
-    def add_pizza_row(self):
-        pizza_widget = QWidget()
-        pizza_layout = QGridLayout()
-        pizza_widget.setLayout(pizza_layout)
+        self.show_welcome_screen()
+    
+    def clear_window(self):
+        for widget in self.root.winfo_children():
+            widget.destroy()
+    
+    def show_welcome_screen(self):
+        self.clear_window()
+        try:
+            image = Image.open("/mnt/data/jp1080.png")
+            image = image.resize((400, 250), Image.LANCZOS)
+            self.welcome_image = ImageTk.PhotoImage(image)
+            ttk.Label(self.root, image=self.welcome_image, background="#1e1e1e").pack(pady=20)
+        except Exception as e:
+            print(f"Error loading image: {e}")
         
-        row = len(self.pizza_options)
+        ttk.Label(self.root, text="Welcome to Pizza Zamboni!", font=("Arial", 18), foreground="white", background="#1e1e1e").pack(pady=10)
+        ttk.Button(self.root, text="Click here to Place Order", command=self.create_widgets, style='success.TButton').pack(pady=20)
+    
+    def create_widgets(self):
+        self.clear_window()
+        ttk.Label(self.root, text="Enter Your Name:", foreground="white", background="#1e1e1e").pack(pady=5)
+        self.name_entry = ttk.Entry(self.root, font=("Arial", 14))
+        self.name_entry.pack(pady=5)
 
-        # Size selection (buttons as rectangles)
-        size_label = QLabel(f"Pizza {row + 1} Size:")
-        pizza_layout.addWidget(size_label, 0, 0)
+        ttk.Label(self.root, text="Select Pizza Size:", foreground="white", background="#1e1e1e").pack(pady=5)
+        self.size_var = tk.StringVar()
+        self.size_buttons = []
+        for size in ['Small', 'Medium', 'Large']:
+            btn = ttk.Button(self.root, text=size, command=lambda s=size: self.select_size(s), style='secondary.TButton')
+            btn.pack(pady=2, fill='x', padx=20)
+            self.size_buttons.append((btn, size))
 
-        size_buttons = []
-        for i, size in enumerate(["Small", "Medium", "Large"]):
-            button = QPushButton(size)
-            button.setCheckable(True)
-            button.clicked.connect(lambda checked, b=button, others=size_buttons: self.handle_exclusive_buttons(b, others))
-            pizza_layout.addWidget(button, 0, i + 1)
-            size_buttons.append(button)
+        ttk.Label(self.root, text="Select Toppings:", foreground="white", background="#1e1e1e").pack(pady=5)
+        self.topping_vars = {}
+        toppings_frame = ttk.Frame(self.root)
+        toppings_frame.pack()
+        for i, topping in enumerate(TOPPINGS):
+            var = tk.BooleanVar()
+            btn = ttk.Button(toppings_frame, text=topping, command=lambda t=topping: self.toggle_topping(t), style='secondary.TButton')
+            btn.grid(row=i//3, column=i%3, padx=5, pady=2)
+            self.topping_vars[topping] = (var, btn)
 
-        # Toppings selection
-        toppings_label = QLabel("Toppings:")
-        pizza_layout.addWidget(toppings_label, 1, 0)
+        ttk.Label(self.root, text="Select Sides:", foreground="white", background="#1e1e1e").pack(pady=5)
+        self.side_buttons = {}
+        sides_frame = ttk.Frame(self.root)
+        sides_frame.pack()
+        for i, side in enumerate(SIDES):
+            btn = ttk.Button(sides_frame, text=side, command=lambda s=side: self.toggle_side(s), style='secondary.TButton')
+            btn.grid(row=0, column=i, padx=5, pady=2)
+            self.side_buttons[side] = btn
 
-        toppings_checkboxes = []
-        toppings = ["Mushroom", "Broccoli", "Tomato", "Black Olives", "Pineapple", "Bacon", "Cheesey Goodness", "Sausage", "Hot Dog"]
-        for i, topping in enumerate(toppings):
-            checkbox = QCheckBox(topping)
-            toppings_checkboxes.append(checkbox)
-            pizza_layout.addWidget(checkbox, 1 + (i // 3), (i % 3) + 1)
+        ttk.Button(self.root, text="Add Pizza", command=self.add_pizza, style='primary.TButton').pack(pady=5)
+        ttk.Button(self.root, text="Complete Order", command=self.confirm_order, style='danger.TButton').pack(pady=5)
+    
+    def toggle_topping(self, topping):
+        var, btn = self.topping_vars[topping]
+        var.set(not var.get())
+        btn.configure(style='primary.TButton' if var.get() else 'secondary.TButton')
+        if var.get():
+            self.current_order['toppings'].append(topping)
+        else:
+            self.current_order['toppings'].remove(topping)
 
-        # Quantity selection
-        quantity_label = QLabel("Quantity:")
-        pizza_layout.addWidget(quantity_label, len(toppings) // 3 + 2, 0)
+    def toggle_side(self, side):
+        if self.current_order['side'] == side:
+            self.current_order['side'] = None
+            self.side_buttons[side].configure(style='secondary.TButton')
+        else:
+            self.current_order['side'] = side
+            for s, btn in self.side_buttons.items():
+                btn.configure(style='primary.TButton' if s == side else 'secondary.TButton')
 
-        quantity_spinbox = QSpinBox()
-        quantity_spinbox.setRange(1, 10)
-        pizza_layout.addWidget(quantity_spinbox, len(toppings) // 3 + 2, 1)
+    def select_size(self, size):
+        self.current_order['size'] = size
+        for btn, s in self.size_buttons:
+            btn.configure(style='primary.TButton' if s == size else 'secondary.TButton')
 
-        self.pizza_layout.addWidget(pizza_widget)
-
-        self.pizza_options.append({
-            "size_buttons": size_buttons,
-            "toppings_checkboxes": toppings_checkboxes,
-            "quantity_spinbox": quantity_spinbox
-        })
-
-    def handle_exclusive_buttons(self, button, others):
-        if button.isChecked():
-            for other in others:
-                if other != button:
-                    other.setChecked(False)
-
-    def calculate_cost(self):
-        user_name = self.name_input.text().strip()
-        if not user_name:
-            QMessageBox.critical(self, "Error", "Please enter your name.")
+    def add_pizza(self):
+        if not self.name_entry.get().strip():
+            messagebox.showerror("Error", "Please enter your name before adding a pizza.")
             return
+        
+        self.current_order["name"] = self.name_entry.get()
+        self.orders.append(self.current_order.copy())
+        self.current_order = {"name": self.name_entry.get(), "size": None, "toppings": [], "side": None}
+        self.create_widgets()
 
-        total_cost = 0
-        order_summary = []
-
-        for i, pizza in enumerate(self.pizza_options):
-            size = next((b.text() for b in pizza["size_buttons"] if b.isChecked()), None)
-            if not size:
-                QMessageBox.critical(self, "Error", f"Please select a size for Pizza {i + 1}.")
-                return
-
-            selected_toppings = [c.text() for c in pizza["toppings_checkboxes"] if c.isChecked()]
-            toppings_message = ", ".join(selected_toppings) if selected_toppings else "no toppings"
-
-            quantity = pizza["quantity_spinbox"].value()
-
-            cost = {"Small": 3, "Medium": 4, "Large": 5}[size] * quantity
-            total_cost += cost
-
-            order_summary.append(f"Pizza {i + 1}: {quantity} x {size} pizza(s) with {toppings_message} - ${cost}")
-
-        QMessageBox.information(
-            self,
-            "Order Summary",
-            f"Thank you, {user_name}!\n\n" + "\n".join(order_summary) + f"\n\nTotal Cost: ${total_cost}"
-        )
-
-    def apply_dark_theme(self):
-        palette = QPalette()
-        palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
-        palette.setColor(QPalette.ColorRole.WindowText, QColor(255, 255, 255))
-        palette.setColor(QPalette.ColorRole.Base, QColor(42, 42, 42))
-        palette.setColor(QPalette.ColorRole.AlternateBase, QColor(66, 66, 66))
-        palette.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 255))
-        palette.setColor(QPalette.ColorRole.ToolTipText, QColor(255, 255, 255))
-        palette.setColor(QPalette.ColorRole.Text, QColor(255, 255, 255))
-        palette.setColor(QPalette.ColorRole.Button, QColor(53, 53, 53))
-        palette.setColor(QPalette.ColorRole.ButtonText, QColor(255, 255, 255))
-        palette.setColor(QPalette.ColorRole.BrightText, QColor(255, 0, 0))
-        palette.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
-        palette.setColor(QPalette.ColorRole.HighlightedText, QColor(0, 0, 0))
-        QApplication.setPalette(palette)
+    def confirm_order(self):
+        customer_name = self.name_entry.get()
+        self.clear_window()
+        summary_text = f"Thank you {customer_name}, your order is complete!\n\n"
+        total_price = 0
+        for order in self.orders:
+            summary_text += f"Pizza Size: {order['size']} - ${PRICES.get(order['size'], 0)}\n"
+            total_price += PRICES.get(order['size'], 0)
+            if order['toppings']:
+                summary_text += "Toppings: " + ", ".join(order['toppings']) + "\n"
+            if order['side']:
+                summary_text += f"Side: {order['side']} - ${PRICES.get(order['side'], 0)}\n"
+                total_price += PRICES.get(order['side'], 0)
+            summary_text += "\n"
+        summary_text += f"Total Price: ${total_price}\n"
+        
+        ttk.Label(self.root, text=summary_text, foreground="white", background="#1e1e1e", font=("Arial", 12)).pack(pady=20)
+        ttk.Button(self.root, text="Back", command=self.create_widgets, style='success.TButton').pack(pady=10)
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = PizzaOrderApp()
-    window.show()
-    sys.exit(app.exec())
+    root = tb.Window(themename="darkly")
+    app = PizzaZamboniApp(root)
+    root.mainloop()
