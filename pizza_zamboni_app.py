@@ -30,8 +30,8 @@ class PizzaZamboniApp:
     def show_welcome_screen(self):
         self.clear_window()
         try:
-            image = Image.open("/mnt/data/jp1080.png")
-            image = image.resize((400, 250), Image.LANCZOS)
+            image = Image.open("pizzaZamboni.png")
+            image = image.resize((500, 500), Image.LANCZOS)
             self.welcome_image = ImageTk.PhotoImage(image)
             ttk.Label(self.root, image=self.welcome_image, background="#1e1e1e").pack(pady=20)
         except Exception as e:
